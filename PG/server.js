@@ -4,27 +4,62 @@ const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
 const md5 = require('md5')
-const { appConfig } = require('./lib/config')
-const connection = require('./db/mysql.js')
+const { appConfig } = require('./config/app')
+const connection = require('./config/db.js')
+
+global.sesion = false
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(express.static('public'));
 app.set('view engine', 'pug');
 
 app.get('/', function(req, res) {
-    res.render('index');
+    res.render('home');
+});
+
+app.post('/verify', function(req, res) {
+    res.send(sesion)
+});
+
+app.post('/off', function(req, res) {
+    sesion = false 
+    res.send(sesion)
+});
+
+app.post('/addpelicula', function(req, res) {
+    if(sesion == true){
+        connection.query('INSERT INTO pelis (titulo, descripcion, fecha) VALUES (?, ?, ?)',[req.body.titulo, req.body.descripcion, req.body.fecha], function(err, result, fields){
+            if(result.affectedRows == 1){
+               res.send(true)
+            }else{
+                res.send(false)
+            }
+        })
+    }
+});
+
+app.post('/getData', function(req, res) {
+    let sql = 'SELECT * FROM pelis'
+    
+    connection.query(sql , function(err, resp, fields){
+        if(resp.length){
+            res.send(resp)
+        }else{
+            res.redirect('/404')
+        }
+    })
 });
 
 app.get('/404', function(req, res) {
     res.render('404');
 });
 
-app.get('/registro', function(req, res) {
-    res.render('registro');
+app.get('/login', function(req, res) {
+    res.render('login');
 });
 
-app.get('/dash', function(req, res) {
-    console.log(req.body)
+app.get('/registro', function(req, res) {
+    res.render('registro');
 });
 
 app.post('/registroUser', function(req, res) {
@@ -54,7 +89,8 @@ app.post('/auth', function(req, res) {
         
         connection.query(sql , function(err, resp, fields){
             if(resp.length){
-                res.render('home', {correo: resp[0].email}); //Hay 2 plantillas una mas sencilla y una mas elaborada solo cambiarlo por home2 o home.
+                sesion = true;
+                res.redirect('/');
             }else{
                 res.redirect('/404')
             }
@@ -65,4 +101,4 @@ app.post('/auth', function(req, res) {
     }
 });
 
-app.listen(appConfig.port, ()=> console.log(`Puesto en marcha en puerto ${appConfig.port}`)) 
+app.listen(appConfig.port, ()=> console.log(`Puesto en marcha en puerto ${appConfig.port}`))
